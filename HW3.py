@@ -3,7 +3,7 @@ This code is for IMM2019 HW3.
 Written by Chun-Chuan Huang
 """
 import numpy as np
-import scipy as sp
+from scipy import special
 
 def S_int(a, b, Rab):
     """
@@ -46,7 +46,7 @@ def V_int(a, b, Rab, Rcp, Zc):
     """
     ab = a * b
     a_b = a + b
-    V = - (2 * pi / (a_b) * F0(a_b  * (Rcp ** 2)) * exp(- ab * Rab ** 2 / a_b)) * Zc
+    V = - (2 * pi / (a_b) * F0(a_b * (Rcp ** 2)) * exp(- ab * (Rab ** 2) / a_b)) * Zc
 
     return V
 
@@ -59,7 +59,7 @@ def F0(t):
     if (t < 1e-6):
         return 1 - t / 3
     else:
-        return 0.5 * (pi / t) ** 0.5 * sp.erf(t ** 0.5)
+        return 0.5 * (pi / t) ** 0.5 * special.erf(t ** 0.5)
 
 
 # Useful parameters
@@ -91,7 +91,10 @@ for i in range(3):
 # The integrals can be generated as followed
 S = np.zeros([2, 2])
 T = np.zeros([2, 2])
-V = np.zeros([2, 2])
+Va = np.zeros([2, 2])
+Vb = np.zeros([2, 2])
+Za = 2
+Zb = 1
 
 for i in range(3):
     for j in range(3):
@@ -108,7 +111,20 @@ for i in range(3):
         T[1, 0] = T[0, 1]
 
         # Nuclear attraction integrals
+        Rap = Expon_H[j] * R / (Expon_He[j] + Expon_H[i])
+        Rbp = R - Rap
+        Va[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, 0, Za) * Coeff_He[i] * Coeff_He[j]
+        Va[0, 1] += V_int(Expon_He[i], Expon_H[j], R, Rap, Za) * Coeff_He[i] * Coeff_H[j]
+        Va[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, R, Za) * Coeff_H[i] * Coeff_H[j]
+        Va[1, 0] = Va[0, 1]
+
+        Vb[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, R, Zb) * Coeff_He[i] * Coeff_He[j]
+        Vb[0, 1] += V_int(Expon_He[i], Expon_H[j], R, Rbp, Zb) * Coeff_He[i] * Coeff_H[j]
+        Vb[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, 0, Zb) * Coeff_H[i] * Coeff_H[j]
+        Vb[1, 0] = Vb[0, 1]
 
 print(S)
 print(T)
+print(Va)
+print(Vb)
 print('Program works successfully!! Go buy some beer!!')
