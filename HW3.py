@@ -1,8 +1,8 @@
 """
 This code is for IMM2019 HW3.
-Written by Chun-Chuan Huang
 """
 import numpy as np
+import scipy
 from scipy import special
 
 def S_int(a, b, Rab):
@@ -40,8 +40,8 @@ def V_int(a, b, Rab, Rcp, Zc):
     :param a: exponent of Gaussian function which is centered at atom A
     :param b: exponent of Gaussian function which is centered at atom B
     :param Rab: Distance between atom A, B
-    :param Rcp:
-    :param Zc:
+    :param Rcp: Distance between centre C and P
+    :param Zc: Effective core nuclear charge
     :return:
     """
     ab = a * b
@@ -60,6 +60,25 @@ def F0(t):
         return 1 - t / 3
     else:
         return 0.5 * (pi / t) ** 0.5 * special.erf(t ** 0.5)
+
+def ERI_int(a, b, c, d, Rab, Rcd, Rpq):
+    """
+    This function is used to calculate two electron integrals
+    :param a: exponent of Gaussian function which is centered at atom A
+    :param b: exponent of Gaussian function which is centered at atom B
+    :param c: exponent of Gaussian function which is centered at atom C
+    :param d: exponent of Gaussian function which is centered at atom D
+    :param Rab: Distance between atom A and B
+    :param Rcd: Distance between atom C and D
+    :param Rpq: Distance between centre P and Q
+    :return:
+    """
+    eri = 2 * (pi ** 2.5) / ((a + b) * (c + d) * pow(a + b + c + d, 0.5)) * exp(- a * b * (Rab ** 2) / (a + b) -
+                                                                                c * d * (Rcd ** 2) / (c + d)) * F0(
+        (a + b) * (c + d) * (Rpq ** 2) / (a + b + c + d)
+    )
+
+    return eri
 
 
 # Useful parameters
@@ -111,7 +130,7 @@ for i in range(3):
         T[1, 0] = T[0, 1]
 
         # Nuclear attraction integrals
-        Rap = Expon_H[j] * R / (Expon_He[j] + Expon_H[i])
+        Rap = Expon_H[j] * R / (Expon_He[i] + Expon_H[j])
         Rbp = R - Rap
         Va[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, 0, Za) * Coeff_He[i] * Coeff_He[j]
         Va[0, 1] += V_int(Expon_He[i], Expon_H[j], R, Rap, Za) * Coeff_He[i] * Coeff_H[j]
@@ -123,8 +142,121 @@ for i in range(3):
         Vb[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, 0, Zb) * Coeff_H[i] * Coeff_H[j]
         Vb[1, 0] = Vb[0, 1]
 
+H_core = T + Va + Vb
+
+'''
+print("For problem (a)")
 print(S)
 print(T)
 print(Va)
 print(Vb)
+'''
+
+# For problem (b)
+# Calculate the two electron integrals
+ERI = np.zeros([2, 2, 2, 2])
+
+for i in range(3):
+    for j in range(3):
+        for k in range(3):
+            for l in range(3):
+                Rap = Expon_H[i] * R / (Expon_H[i] + Expon_He[j])
+                Rbp = R - Rap
+                Raq = Expon_H[k] * R / (Expon_H[k] + Expon_He[l])
+                Rbq = R - Raq
+                Rpq = Rap - Raq
+
+                ERI[0, 0, 0, 0] += ERI_int(Expon_He[i], Expon_He[j], Expon_He[k], Expon_He[l], 0, 0, 0) * Coeff_He[i] *\
+                                   Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
+
+                ERI[1, 0, 0, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_He[k], Expon_He[l], R, 0, Rap) * Coeff_H[i] *\
+                Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
+
+                ERI[1, 0, 1, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_H[k], Expon_He[l], R, R, Rpq) * Coeff_H[i] * \
+                Coeff_He[j] * Coeff_H[k] * Coeff_He[l]
+
+                ERI[1, 1, 0, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_He[k], Expon_He[l], 0, 0, R) * Coeff_H[i] * \
+                Coeff_H[j] * Coeff_He[k] * Coeff_He[l]
+
+                ERI[1, 1, 1, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_He[l], 0, R, Rbq) * Coeff_H[i] * \
+                Coeff_H[j] * Coeff_H[k] * Coeff_He[l]
+
+                ERI[1, 1, 1, 1] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], 0, 0, 0) * Coeff_H[i] * \
+                Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
+
+                ERI[0, 1, 0, 0] = ERI[1, 0, 0, 0]
+                ERI[0, 0, 1, 0] = ERI[1, 0, 0, 0]
+                ERI[0, 0, 0, 1] = ERI[1, 0, 0, 0]
+
+                ERI[1, 0, 0, 1] = ERI[1, 0, 1, 0]
+                ERI[0, 1, 0, 1] = ERI[1, 0, 1, 0]
+                ERI[0, 1, 1, 0] = ERI[1, 0, 1, 0]
+
+                ERI[0, 0, 1, 1] = ERI[1, 1, 0, 0]
+
+                ERI[0, 1, 1, 1] = ERI[1, 1, 1, 0]
+                ERI[1, 0, 1, 1] = ERI[1, 1, 1, 0]
+                ERI[1, 1, 0, 1] = ERI[1, 1, 1, 0]
+"""
+print("For problem (b):")
+print(ERI)
+"""
+
+# For problem (c)
+toler = 1e-10
+MaxIter = 250
+Iter = 0
+
+# Initial guess density matrix
+P = np.zeros([2, 2])
+
+# Diagonalize the overlap matrix
+Eigen_S, X = np.linalg.eigh(S)
+X = scipy.linalg.fractional_matrix_power(X, -0.5)
+
+while Iter < MaxIter:
+    Iter += 1
+    print("No. Iter", Iter)
+    # Calculate the two electron of the Fock Matrix G = sum(k, l) P[k, l] * (ij|kl) - 0.5(il|kj)
+    G = np.zeros([2, 2])
+
+    for i in range(2):
+        for j in range(2):
+            for k in range(2):
+                for l in range(2):
+                    G[i, j] += P[k, l] * (ERI[i, j, k, l] - 0.5 * ERI[i, l, k, j])
+
+    # Construct the Fock matrix by adding H_core and G
+    F = H_core + G
+
+    energy_ele = np.sum(0.5 * P * (H_core + F))
+
+    # Transform the Fock matrix F' = X'FX
+    F_prime = np.linalg.multi_dot([X.transpose().conjugate(), F, X])
+
+    # Diagonalize F' to obtain C' and epsilon
+    epsilon, C_prime = np.linalg.eigh(F_prime)
+
+    # Transform the C' back to C by C = XC'
+    C = np.dot(X, C_prime)
+
+    # Construct a new density matrix from the C by P = 2 C'C
+    P_old = P.copy()
+    P = 2 * np.dot(C.transpose().conjugate(), C)
+
+    # Check whether the procedure is converged by check the density matrix
+    Delta = P - P_old
+    Delta = np.sqrt(np.sum(Delta ** 2) / 4)
+    print("Delta", Delta)
+
+    # Once converged
+    if Delta < toler:
+        # Add the nuclear repulsion energy
+        energy = energy_ele + Za * Zb / R
+        print("Calculation converged with electronic energy:", energy_ele)
+        print("Calculation converged with total energy:", energy)
+
+        break
+
+
 print('Program works successfully!! Go buy some beer!!')
