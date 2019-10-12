@@ -123,13 +123,13 @@ def HFSCF(_r):
         for j in range(3):
             # Overlap matrix
             S[0, 0] += S_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
-            S[0, 1] += S_int(Expon_He[i], Expon_H[j], R) * Coeff_He[i] * Coeff_H[j]
+            S[0, 1] += S_int(Expon_He[i], Expon_H[j], _r) * Coeff_He[i] * Coeff_H[j]
             S[1, 1] += S_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
             S[1, 0] = S[0, 1]
 
             # Kinetic Matrix
             T[0, 0] += T_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
-            T[0, 1] += T_int(Expon_He[i], Expon_H[j], R) * Coeff_He[i] * Coeff_H[j]
+            T[0, 1] += T_int(Expon_He[i], Expon_H[j], _r) * Coeff_He[i] * Coeff_H[j]
             T[1, 1] += T_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
             T[1, 0] = T[0, 1]
 
@@ -148,13 +148,6 @@ def HFSCF(_r):
 
     H_core = T + Va + Vb
 
-    '''
-    print("For problem (a)")
-    print(S)
-    print(T)
-    print(Va)
-    print(Vb)
-    '''
     # For problem (b)
     # Calculate the two electron integrals
     ERI = np.zeros([2, 2, 2, 2])
@@ -200,10 +193,16 @@ def HFSCF(_r):
                     ERI[0, 1, 1, 1] = ERI[1, 1, 1, 0]
                     ERI[1, 0, 1, 1] = ERI[1, 1, 1, 0]
                     ERI[1, 1, 0, 1] = ERI[1, 1, 1, 0]
-    """
+
+    '''
     print("For problem (b):")
-    print(ERI)
-    """
+    print('(11|11): ', ERI[0, 0, 0, 0])
+    print('(21|11): ', ERI[1, 0, 0, 0])
+    print('(21|21): ', ERI[1, 0, 1, 0])
+    print('(22|11): ', ERI[1, 1, 0, 0])
+    print('(22|21): ', ERI[1, 1, 1, 0])
+    print('(22|22): ', ERI[1, 1, 1, 1])
+    '''
 
     # For problem (c)
     toler = 1e-11
@@ -264,22 +263,43 @@ def HFSCF(_r):
         # Once converged
         if Delta < toler:
             # Add the nuclear repulsion energy
-            energy = energy_ele + Za * Zb / R
-            # print('\nConverged!!!')
-            # print("Calculation converged with electronic energy:", energy_ele)
-            # print("Calculation converged with total energy:", energy)
-            # print('MO Coefficients:\n', C)
-            # print('Orbital Energies:\n', np.diag(epsilon))
+            energy = energy_ele + Za * Zb / _r
+            print('\nConverged!!!')
+            print("Calculation converged with electronic energy:", energy_ele)
+            print("Calculation converged with total energy:", energy)
+            print('MO Coefficients:\n', C)
+            print('Orbital Energies:\n', np.diag(epsilon))
 
             break
-    return energy
+    return energy, ERI, epsilon
+
+def CI_calculation(_eri, _epsilon):
+
+    # First construct the 3X3 CI matrix, in order ground state, single excitation, double excitation
+    CI_matrix = np.zeros([3, 3])
+
+    #
+    CI_matrix[0, 2] = _eri[0, 1, 1, 0]
+    CI_matrix[1, 1] = _epsilon[1] - _epsilon[0] - _eri[1, 1, 0, 0] + 2 * _eri[1, 0, 0, 1]
+    CI_matrix[1, 2] = 4 * _eri[0, 1, 0, 0] + 4 * _eri[0, 1, 1, 1] - 2 * (_eri[0, 0, 0, 1] + _eri[0, 1, 1, 1])
+    CI_matrix[2, 2] = 2*(_epsilon[1] - _epsilon[0]) + _eri[0, 0, 0, 0] + _eri[1, 1, 1, 1] - 4 * _eri[0, 0, 1, 1]\
+                      + 2 * _eri[0, 1, 1, 0]
+
+    CI_matrix += CI_matrix.transpose() - np.diag(CI_matrix.diagonal())
+
+    energy_correct, CI_coefficient = np.linalg.eigh(CI_matrix)
+
+    return energy_correct, CI_coefficient
 
 
 # Useful parameters
+np.set_printoptions(precision=7, linewidth=200, threshold=2000, suppress=True)
 pi = np.pi
 exp = np.exp
 r = 1.4632
+energy, ERI, e,  = HFSCF(r)
 
+'''
 # For problem (d)
 # Perform HF-SCF from 0.5 to 5 a.u.
 
@@ -287,7 +307,7 @@ distance = np.linspace(0.5, 5, 1000)
 energy_surface = np.zeros([1000])
 
 for index, R in enumerate(distance):
-    energy_surface[index] = HFSCF(R)
+    energy_surface[index], tmp = HFSCF(R)
 
 # Plot the energy surface
 plt.plot(distance, energy_surface, '.-')
@@ -296,4 +316,10 @@ plt.xlabel('R (a.u.)')
 plt.show()
 
 print('Equlibrium Bond Length:', distance[energy_surface.argmin()], '\nMinimum Energy:', energy_surface.min())
+'''
+
+# For problem (f), perform the full CI calculation
+E_correct, CI_coeffient = CI_calculation(ERI, e)
+print(E_correct)
+print(CI_coeffient)
 print('Program works successfully!! Go buy some beer!!')
