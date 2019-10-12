@@ -203,20 +203,23 @@ print(ERI)
 """
 
 # For problem (c)
-toler = 1e-10
+toler = 1e-11
 MaxIter = 250
 Iter = 0
 
 # Initial guess density matrix
 P = np.zeros([2, 2])
 
-# Diagonalize the overlap matrix
-Eigen_S, X = np.linalg.eigh(S)
-X = scipy.linalg.fractional_matrix_power(X, -0.5)
+# Diagonalize the overlap matrix and obtain the transform matrix by X = U(s ** -0.5) U(degar)
+Eigen_S, U = np.linalg.eigh(S)
+Eigen_S = np.diag(Eigen_S)
+X = np.linalg.multi_dot([U,
+                         scipy.linalg.fractional_matrix_power(Eigen_S, -0.5),
+                         U.transpose().conjugate()])
 
 while Iter < MaxIter:
     Iter += 1
-    print("No. Iter", Iter)
+    print("Iter No.:", Iter)
     # Calculate the two electron of the Fock Matrix G = sum(k, l) P[k, l] * (ij|kl) - 0.5(il|kj)
     G = np.zeros([2, 2])
 
@@ -230,6 +233,7 @@ while Iter < MaxIter:
     F = H_core + G
 
     energy_ele = np.sum(0.5 * P * (H_core + F))
+    print('Electronic energy = ', energy_ele)
 
     # Transform the Fock matrix F' = X'FX
     F_prime = np.linalg.multi_dot([X.transpose().conjugate(), F, X])
@@ -242,7 +246,12 @@ while Iter < MaxIter:
 
     # Construct a new density matrix from the C by P = 2 C'C
     P_old = P.copy()
-    P = 2 * np.dot(C.transpose().conjugate(), C)
+    P = np.zeros([2, 2])
+
+    for i in range(2):
+        for j in range(2):
+            for k in range(1):
+                P[i, j] += 2 * C[i, k] * C[j, k]
 
     # Check whether the procedure is converged by check the density matrix
     Delta = P - P_old
@@ -253,8 +262,11 @@ while Iter < MaxIter:
     if Delta < toler:
         # Add the nuclear repulsion energy
         energy = energy_ele + Za * Zb / R
+        print('\nConverged!!!')
         print("Calculation converged with electronic energy:", energy_ele)
         print("Calculation converged with total energy:", energy)
+        print('MO Coefficients:\n', C)
+        print('Orbital Energies:\n', np.diag(epsilon))
 
         break
 
