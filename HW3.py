@@ -1,9 +1,11 @@
 """
 This code is for IMM2019 HW3.
+Wriiten by Chun-Chuan Huang
 """
 import numpy as np
 import scipy
 from scipy import special
+import matplotlib.pyplot as plt
 
 def S_int(a, b, Rab):
     """
@@ -81,194 +83,217 @@ def ERI_int(a, b, c, d, Rab, Rcd, Rpq):
     return eri
 
 
+def HFSCF(_r):
+    """
+    This function is used to perform HF-SCF
+    :param _r: Distance between the atoms
+    :return:
+    """
+
+    Zeta1 = 2.0925
+    Zeta2 = 1.24
+
+    # Construct the AO basis set
+    # Standard STO-3G information for zeta = 1.0
+    Coeff = np.array([0.444635, 0.535328, 0.154329])
+    Expon = np.array([0.109818, 0.405771, 2.227660])
+
+    Expon_He = np.zeros([3])
+    Expon_H = np.zeros([3])
+    Coeff_He = np.zeros([3])
+    Coeff_H = np.zeros([3])
+
+
+    for i in range(3):
+        Expon_He[i] = Expon[i] * (Zeta1 ** 2)
+        Expon_H[i] = Expon[i] * (Zeta2 ** 2)
+        Coeff_He[i] = Coeff[i] * ((2 * Expon_He[i] / pi) ** 0.75)
+        Coeff_H[i] = Coeff[i] * ((2 * Expon_H[i] / pi) ** 0.75)
+
+    # For problem 1. (a)
+    # The integrals can be generated as followed
+    S = np.zeros([2, 2])
+    T = np.zeros([2, 2])
+    Va = np.zeros([2, 2])
+    Vb = np.zeros([2, 2])
+    Za = 2
+    Zb = 1
+
+    for i in range(3):
+        for j in range(3):
+            # Overlap matrix
+            S[0, 0] += S_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
+            S[0, 1] += S_int(Expon_He[i], Expon_H[j], R) * Coeff_He[i] * Coeff_H[j]
+            S[1, 1] += S_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
+            S[1, 0] = S[0, 1]
+
+            # Kinetic Matrix
+            T[0, 0] += T_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
+            T[0, 1] += T_int(Expon_He[i], Expon_H[j], R) * Coeff_He[i] * Coeff_H[j]
+            T[1, 1] += T_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
+            T[1, 0] = T[0, 1]
+
+            # Nuclear attraction integrals
+            Rap = Expon_H[j] * _r / (Expon_He[i] + Expon_H[j])
+            Rbp = _r - Rap
+            Va[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, 0, Za) * Coeff_He[i] * Coeff_He[j]
+            Va[0, 1] += V_int(Expon_He[i], Expon_H[j], _r, Rap, Za) * Coeff_He[i] * Coeff_H[j]
+            Va[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, _r, Za) * Coeff_H[i] * Coeff_H[j]
+            Va[1, 0] = Va[0, 1]
+
+            Vb[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, _r, Zb) * Coeff_He[i] * Coeff_He[j]
+            Vb[0, 1] += V_int(Expon_He[i], Expon_H[j], _r, Rbp, Zb) * Coeff_He[i] * Coeff_H[j]
+            Vb[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, 0, Zb) * Coeff_H[i] * Coeff_H[j]
+            Vb[1, 0] = Vb[0, 1]
+
+    H_core = T + Va + Vb
+
+    '''
+    print("For problem (a)")
+    print(S)
+    print(T)
+    print(Va)
+    print(Vb)
+    '''
+    # For problem (b)
+    # Calculate the two electron integrals
+    ERI = np.zeros([2, 2, 2, 2])
+
+    for i in range(3):
+        for j in range(3):
+            for k in range(3):
+                for l in range(3):
+                    Rap = Expon_H[i] * _r / (Expon_H[i] + Expon_He[j])
+                    Rbp = _r - Rap
+                    Raq = Expon_H[k] * _r / (Expon_H[k] + Expon_He[l])
+                    Rbq = _r - Raq
+                    Rpq = Rap - Raq
+
+                    ERI[0, 0, 0, 0] += ERI_int(Expon_He[i], Expon_He[j], Expon_He[k], Expon_He[l], 0, 0, 0) * Coeff_He[i] *\
+                                       Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
+
+                    ERI[1, 0, 0, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_He[k], Expon_He[l], _r, 0, Rap) * Coeff_H[i] *\
+                    Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
+
+                    ERI[1, 0, 1, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_H[k], Expon_He[l], _r, _r, Rpq) * Coeff_H[i] * \
+                    Coeff_He[j] * Coeff_H[k] * Coeff_He[l]
+
+                    ERI[1, 1, 0, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_He[k], Expon_He[l], 0, 0, _r) * Coeff_H[i] * \
+                    Coeff_H[j] * Coeff_He[k] * Coeff_He[l]
+
+                    ERI[1, 1, 1, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_He[l], 0, _r, Rbq) * Coeff_H[i] * \
+                    Coeff_H[j] * Coeff_H[k] * Coeff_He[l]
+
+                    ERI[1, 1, 1, 1] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], 0, 0, 0) * Coeff_H[i] * \
+                    Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
+
+                    ERI[0, 1, 0, 0] = ERI[1, 0, 0, 0]
+                    ERI[0, 0, 1, 0] = ERI[1, 0, 0, 0]
+                    ERI[0, 0, 0, 1] = ERI[1, 0, 0, 0]
+
+                    ERI[1, 0, 0, 1] = ERI[1, 0, 1, 0]
+                    ERI[0, 1, 0, 1] = ERI[1, 0, 1, 0]
+                    ERI[0, 1, 1, 0] = ERI[1, 0, 1, 0]
+
+                    ERI[0, 0, 1, 1] = ERI[1, 1, 0, 0]
+
+                    ERI[0, 1, 1, 1] = ERI[1, 1, 1, 0]
+                    ERI[1, 0, 1, 1] = ERI[1, 1, 1, 0]
+                    ERI[1, 1, 0, 1] = ERI[1, 1, 1, 0]
+    """
+    print("For problem (b):")
+    print(ERI)
+    """
+
+    # For problem (c)
+    toler = 1e-11
+    MaxIter = 250
+    Iter = 0
+
+    # Initial guess density matrix
+    P = np.zeros([2, 2])
+
+    # Diagonalize the overlap matrix and obtain the transform matrix by X = U(s ** -0.5) U(degar)
+    Eigen_S, U = np.linalg.eigh(S)
+    Eigen_S = np.diag(Eigen_S)
+    X = np.linalg.multi_dot([U,
+                             scipy.linalg.fractional_matrix_power(Eigen_S, -0.5),
+                             U.transpose().conjugate()])
+
+    while Iter < MaxIter:
+        Iter += 1
+        # print("Iter No.:", Iter)
+        # Calculate the two electron of the Fock Matrix G = sum(k, l) P[k, l] * (ij|kl) - 0.5(il|kj)
+        G = np.zeros([2, 2])
+
+        for i in range(2):
+            for j in range(2):
+                for k in range(2):
+                    for l in range(2):
+                        G[i, j] += P[k, l] * (ERI[i, j, k, l] - 0.5 * ERI[i, l, k, j])
+
+        # Construct the Fock matrix by adding H_core and G
+        F = H_core + G
+
+        energy_ele = np.sum(0.5 * P * (H_core + F))
+        # print('Electronic energy = ', energy_ele)
+
+        # Transform the Fock matrix F' = X'FX
+        F_prime = np.linalg.multi_dot([X.transpose().conjugate(), F, X])
+
+        # Diagonalize F' to obtain C' and epsilon
+        epsilon, C_prime = np.linalg.eigh(F_prime)
+
+        # Transform the C' back to C by C = XC'
+        C = np.dot(X, C_prime)
+
+        # Construct a new density matrix from the C by P = 2 C'C
+        P_old = P.copy()
+        P = np.zeros([2, 2])
+
+        for i in range(2):
+            for j in range(2):
+                for k in range(1):
+                    P[i, j] += 2 * C[i, k] * C[j, k]
+
+        # Check whether the procedure is converged by check the density matrix
+        Delta = P - P_old
+        Delta = np.sqrt(np.sum(Delta ** 2) / 4)
+        # print("Delta", Delta)
+
+        # Once converged
+        if Delta < toler:
+            # Add the nuclear repulsion energy
+            energy = energy_ele + Za * Zb / R
+            # print('\nConverged!!!')
+            # print("Calculation converged with electronic energy:", energy_ele)
+            # print("Calculation converged with total energy:", energy)
+            # print('MO Coefficients:\n', C)
+            # print('Orbital Energies:\n', np.diag(epsilon))
+
+            break
+    return energy
+
+
 # Useful parameters
 pi = np.pi
 exp = np.exp
-Zeta1 = 2.0925
-Zeta2 = 1.24
-R = 1.4632
-inf = np.inf
+r = 1.4632
 
-# Construct the AO basis set
-# Standard STO-3G information for zeta = 1.0
-Coeff = np.array([0.444635, 0.535328, 0.154329])
-Expon = np.array([0.109818, 0.405771, 2.227660])
+# For problem (d)
+# Perform HF-SCF from 0.5 to 5 a.u.
 
-Expon_He = np.zeros([3])
-Expon_H = np.zeros([3])
-Coeff_He = np.zeros([3])
-Coeff_H = np.zeros([3])
+distance = np.linspace(0.5, 5, 1000)
+energy_surface = np.zeros([1000])
 
+for index, R in enumerate(distance):
+    energy_surface[index] = HFSCF(R)
 
-for i in range(3):
-    Expon_He[i] = Expon[i] * (Zeta1 ** 2)
-    Expon_H[i] = Expon[i] * (Zeta2 ** 2)
-    Coeff_He[i] = Coeff[i] * ((2 * Expon_He[i] / pi) ** 0.75)
-    Coeff_H[i] = Coeff[i] * ((2 * Expon_H[i] / pi) ** 0.75)
+# Plot the energy surface
+plt.plot(distance, energy_surface, '.-')
+plt.ylabel('E (a.u.)')
+plt.xlabel('R (a.u.)')
+plt.show()
 
-# For problem 1. (a)
-# The integrals can be generated as followed
-S = np.zeros([2, 2])
-T = np.zeros([2, 2])
-Va = np.zeros([2, 2])
-Vb = np.zeros([2, 2])
-Za = 2
-Zb = 1
-
-for i in range(3):
-    for j in range(3):
-        # Overlap matrix
-        S[0, 0] += S_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
-        S[0, 1] += S_int(Expon_He[i], Expon_H[j], R) * Coeff_He[i] * Coeff_H[j]
-        S[1, 1] += S_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
-        S[1, 0] = S[0, 1]
-
-        # Kinetic Matrix
-        T[0, 0] += T_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
-        T[0, 1] += T_int(Expon_He[i], Expon_H[j], R) * Coeff_He[i] * Coeff_H[j]
-        T[1, 1] += T_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
-        T[1, 0] = T[0, 1]
-
-        # Nuclear attraction integrals
-        Rap = Expon_H[j] * R / (Expon_He[i] + Expon_H[j])
-        Rbp = R - Rap
-        Va[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, 0, Za) * Coeff_He[i] * Coeff_He[j]
-        Va[0, 1] += V_int(Expon_He[i], Expon_H[j], R, Rap, Za) * Coeff_He[i] * Coeff_H[j]
-        Va[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, R, Za) * Coeff_H[i] * Coeff_H[j]
-        Va[1, 0] = Va[0, 1]
-
-        Vb[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, R, Zb) * Coeff_He[i] * Coeff_He[j]
-        Vb[0, 1] += V_int(Expon_He[i], Expon_H[j], R, Rbp, Zb) * Coeff_He[i] * Coeff_H[j]
-        Vb[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, 0, Zb) * Coeff_H[i] * Coeff_H[j]
-        Vb[1, 0] = Vb[0, 1]
-
-H_core = T + Va + Vb
-
-'''
-print("For problem (a)")
-print(S)
-print(T)
-print(Va)
-print(Vb)
-'''
-
-# For problem (b)
-# Calculate the two electron integrals
-ERI = np.zeros([2, 2, 2, 2])
-
-for i in range(3):
-    for j in range(3):
-        for k in range(3):
-            for l in range(3):
-                Rap = Expon_H[i] * R / (Expon_H[i] + Expon_He[j])
-                Rbp = R - Rap
-                Raq = Expon_H[k] * R / (Expon_H[k] + Expon_He[l])
-                Rbq = R - Raq
-                Rpq = Rap - Raq
-
-                ERI[0, 0, 0, 0] += ERI_int(Expon_He[i], Expon_He[j], Expon_He[k], Expon_He[l], 0, 0, 0) * Coeff_He[i] *\
-                                   Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
-
-                ERI[1, 0, 0, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_He[k], Expon_He[l], R, 0, Rap) * Coeff_H[i] *\
-                Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
-
-                ERI[1, 0, 1, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_H[k], Expon_He[l], R, R, Rpq) * Coeff_H[i] * \
-                Coeff_He[j] * Coeff_H[k] * Coeff_He[l]
-
-                ERI[1, 1, 0, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_He[k], Expon_He[l], 0, 0, R) * Coeff_H[i] * \
-                Coeff_H[j] * Coeff_He[k] * Coeff_He[l]
-
-                ERI[1, 1, 1, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_He[l], 0, R, Rbq) * Coeff_H[i] * \
-                Coeff_H[j] * Coeff_H[k] * Coeff_He[l]
-
-                ERI[1, 1, 1, 1] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], 0, 0, 0) * Coeff_H[i] * \
-                Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
-
-                ERI[0, 1, 0, 0] = ERI[1, 0, 0, 0]
-                ERI[0, 0, 1, 0] = ERI[1, 0, 0, 0]
-                ERI[0, 0, 0, 1] = ERI[1, 0, 0, 0]
-
-                ERI[1, 0, 0, 1] = ERI[1, 0, 1, 0]
-                ERI[0, 1, 0, 1] = ERI[1, 0, 1, 0]
-                ERI[0, 1, 1, 0] = ERI[1, 0, 1, 0]
-
-                ERI[0, 0, 1, 1] = ERI[1, 1, 0, 0]
-
-                ERI[0, 1, 1, 1] = ERI[1, 1, 1, 0]
-                ERI[1, 0, 1, 1] = ERI[1, 1, 1, 0]
-                ERI[1, 1, 0, 1] = ERI[1, 1, 1, 0]
-"""
-print("For problem (b):")
-print(ERI)
-"""
-
-# For problem (c)
-toler = 1e-11
-MaxIter = 250
-Iter = 0
-
-# Initial guess density matrix
-P = np.zeros([2, 2])
-
-# Diagonalize the overlap matrix and obtain the transform matrix by X = U(s ** -0.5) U(degar)
-Eigen_S, U = np.linalg.eigh(S)
-Eigen_S = np.diag(Eigen_S)
-X = np.linalg.multi_dot([U,
-                         scipy.linalg.fractional_matrix_power(Eigen_S, -0.5),
-                         U.transpose().conjugate()])
-
-while Iter < MaxIter:
-    Iter += 1
-    print("Iter No.:", Iter)
-    # Calculate the two electron of the Fock Matrix G = sum(k, l) P[k, l] * (ij|kl) - 0.5(il|kj)
-    G = np.zeros([2, 2])
-
-    for i in range(2):
-        for j in range(2):
-            for k in range(2):
-                for l in range(2):
-                    G[i, j] += P[k, l] * (ERI[i, j, k, l] - 0.5 * ERI[i, l, k, j])
-
-    # Construct the Fock matrix by adding H_core and G
-    F = H_core + G
-
-    energy_ele = np.sum(0.5 * P * (H_core + F))
-    print('Electronic energy = ', energy_ele)
-
-    # Transform the Fock matrix F' = X'FX
-    F_prime = np.linalg.multi_dot([X.transpose().conjugate(), F, X])
-
-    # Diagonalize F' to obtain C' and epsilon
-    epsilon, C_prime = np.linalg.eigh(F_prime)
-
-    # Transform the C' back to C by C = XC'
-    C = np.dot(X, C_prime)
-
-    # Construct a new density matrix from the C by P = 2 C'C
-    P_old = P.copy()
-    P = np.zeros([2, 2])
-
-    for i in range(2):
-        for j in range(2):
-            for k in range(1):
-                P[i, j] += 2 * C[i, k] * C[j, k]
-
-    # Check whether the procedure is converged by check the density matrix
-    Delta = P - P_old
-    Delta = np.sqrt(np.sum(Delta ** 2) / 4)
-    print("Delta", Delta)
-
-    # Once converged
-    if Delta < toler:
-        # Add the nuclear repulsion energy
-        energy = energy_ele + Za * Zb / R
-        print('\nConverged!!!')
-        print("Calculation converged with electronic energy:", energy_ele)
-        print("Calculation converged with total energy:", energy)
-        print('MO Coefficients:\n', C)
-        print('Orbital Energies:\n', np.diag(epsilon))
-
-        break
-
-
+print('Equlibrium Bond Length:', distance[energy_surface.argmin()], '\nMinimum Energy:', energy_surface.min())
 print('Program works successfully!! Go buy some beer!!')
