@@ -271,9 +271,9 @@ def HFSCF(_r):
             print('Orbital Energies:\n', np.diag(epsilon))
 
             break
-    return energy, ERI, epsilon
+    return energy, ERI, epsilon, H_core
 
-def CI_calculation(_eri, _epsilon):
+def CI_calculation(_eri, _epsilon, _h):
 
     # First construct the 3X3 CI matrix, in order ground state, single excitation, double excitation
     CI_matrix = np.zeros([3, 3])
@@ -281,8 +281,8 @@ def CI_calculation(_eri, _epsilon):
     #
     CI_matrix[0, 2] = _eri[0, 1, 1, 0]
     CI_matrix[1, 1] = _epsilon[1] - _epsilon[0] - _eri[1, 1, 0, 0] + 2 * _eri[1, 0, 0, 1]
-    CI_matrix[1, 2] = 4 * _eri[0, 1, 0, 0] + 4 * _eri[0, 1, 1, 1] - 2 * (_eri[0, 0, 0, 1] + _eri[0, 1, 1, 1])
-    CI_matrix[2, 2] = 2*(_epsilon[1] - _epsilon[0]) + _eri[0, 0, 0, 0] + _eri[1, 1, 1, 1] - 4 * _eri[0, 0, 1, 1]\
+    CI_matrix[1, 2] = pow(2, -0.5) * (2 * _h[0, 1] + 2 * _eri[0, 1, 1, 1] + 2 * _eri[0, 0, 1, 0] - 2 * _eri[0, 1, 1, 1])
+    CI_matrix[2, 2] = 2 * (_epsilon[1] - _epsilon[0]) + _eri[0, 0, 0, 0] + _eri[1, 1, 1, 1] - 4 * _eri[0, 0, 1, 1]\
                       + 2 * _eri[0, 1, 1, 0]
 
     CI_matrix += CI_matrix.transpose() - np.diag(CI_matrix.diagonal())
@@ -297,7 +297,7 @@ np.set_printoptions(precision=7, linewidth=200, threshold=2000, suppress=True)
 pi = np.pi
 exp = np.exp
 r = 1.4632
-energy, ERI, e,  = HFSCF(r)
+energy, ERI, e, h = HFSCF(r)
 
 '''
 # For problem (d)
@@ -319,7 +319,7 @@ print('Equlibrium Bond Length:', distance[energy_surface.argmin()], '\nMinimum E
 '''
 
 # For problem (f), perform the full CI calculation
-E_correct, CI_coeffient = CI_calculation(ERI, e)
-print(E_correct)
-print(CI_coeffient)
+E_correct, CI_coeffient = CI_calculation(ERI, e, h)
+print('Correction Energy:\n', E_correct)
+print('CI Coefficients:\n', CI_coeffient)
 print('Program works successfully!! Go buy some beer!!')
