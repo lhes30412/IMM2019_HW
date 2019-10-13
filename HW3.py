@@ -1,6 +1,10 @@
 """
 This code is for IMM2019 HW3.
 Wriiten by Chun-Chuan Huang
+With reference from
+http://nznano.blogspot.com/2018/03/simple-quantum-chemistry-hartree-fock.html
+https://github.com/psi4/psi4numpy/blob/master/Self-Consistent-Field/RHF.py
+[Szabo:1996] appendix B
 """
 import numpy as np
 import scipy
