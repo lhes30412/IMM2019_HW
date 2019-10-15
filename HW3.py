@@ -268,12 +268,13 @@ def HFSCF(_r):
         if Delta < toler:
             # Add the nuclear repulsion energy
             energy = energy_ele + Za * Zb / _r
+            '''
             print('\nConverged!!!')
             print("Calculation converged with electronic energy:", energy_ele)
             print("Calculation converged with total energy:", energy)
             print('MO Coefficients:\n', C)
             print('Orbital Energies:\n', np.diag(epsilon))
-
+            '''
             break
     return energy, ERI, epsilon, H_core
 
@@ -301,9 +302,7 @@ np.set_printoptions(precision=7, linewidth=200, threshold=2000, suppress=True)
 pi = np.pi
 exp = np.exp
 r = 1.4632
-energy, ERI, e, h = HFSCF(r)
 
-'''
 # For problem (d)
 # Perform HF-SCF from 0.5 to 5 a.u.
 
@@ -311,7 +310,11 @@ distance = np.linspace(0.5, 5, 1000)
 energy_surface = np.zeros([1000])
 
 for index, R in enumerate(distance):
-    energy_surface[index], tmp = HFSCF(R)
+    energy_surface[index], ERI, e, h = HFSCF(R)
+    # For problem (f), perform the full CI calculation
+    E_correct, CI_coeffient = CI_calculation(ERI, e, h)
+    energy_surface[index] += E_correct[0]
+
 
 # Plot the energy surface
 plt.plot(distance, energy_surface, '.-')
@@ -319,11 +322,5 @@ plt.ylabel('E (a.u.)')
 plt.xlabel('R (a.u.)')
 plt.show()
 
-print('Equlibrium Bond Length:', distance[energy_surface.argmin()], '\nMinimum Energy:', energy_surface.min())
-'''
-
-# For problem (f), perform the full CI calculation
-E_correct, CI_coeffient = CI_calculation(ERI, e, h)
-print('Correction Energy:\n', E_correct)
-print('CI Coefficients:\n', CI_coeffient)
+# print('Equlibrium Bond Length:', distance[energy_surface.argmin()], '\nMinimum Energy:', energy_surface.min())
 print('Program works successfully!! Go buy some beer!!')
