@@ -3,7 +3,7 @@
   <component name="RemoteMappingsManager">
     <list>
       <list>
-        <remote-mappings server-id="python@sftp://lhes30412@140.112.55.136:22/home/lhes30412/anaconda3/envs/idp/bin/python">
+        <remote-mappings server-id="python@sftp://lhes30412@140.112.55.136:22/home/lhes30412/anaconda3/envs/idp/bin/python3.6">
           <settings>
             <list>
               <mapping local-root="$PROJECT_DIR$" remote-root="/home/lhes30412/tmp/IMM2019_HW" />
