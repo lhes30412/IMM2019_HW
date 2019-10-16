@@ -1,10 +1,11 @@
 """
 This code is for IMM2019 HW3.
-Wriiten by Chun-Chuan Huang
-With reference from
+With references:
+Basic Structure:
 http://nznano.blogspot.com/2018/03/simple-quantum-chemistry-hartree-fock.html
-https://github.com/psi4/psi4numpy/blob/master/Self-Consistent-Field/RHF.py
 [Szabo:1996] appendix B
+Revised into numpy:
+https://github.com/psi4/psi4numpy/blob/master/Self-Consistent-Field/RHF.py
 """
 import numpy as np
 import scipy
@@ -45,7 +46,7 @@ def V_int(a, b, Rab, Rcp, Zc):
     F0 is corresponded to the error function
     :param a: exponent of Gaussian function which is centered at atom A
     :param b: exponent of Gaussian function which is centered at atom B
-    :param Rab: Distance between atom A, B
+    :param Rab: Distance between atoms
     :param Rcp: Distance between centre C and P
     :param Zc: Effective core nuclear charge
     :return:
@@ -58,7 +59,8 @@ def V_int(a, b, Rab, Rcp, Zc):
 
 def F0(t):
     """
-
+    The error function need in calculating electron interaction
+    Note that when t close to zero, we replace the result with 1 - t / 3 followed the method in Szabo to prevent inf / 0
     :param t:
     :return:
     """
@@ -70,12 +72,13 @@ def F0(t):
 def ERI_int(a, b, c, d, Rab, Rcd, Rpq):
     """
     This function is used to calculate two electron integrals
-    :param a: exponent of Gaussian function which is centered at atom A
-    :param b: exponent of Gaussian function which is centered at atom B
-    :param c: exponent of Gaussian function which is centered at atom C
-    :param d: exponent of Gaussian function which is centered at atom D
-    :param Rab: Distance between atom A and B
-    :param Rcd: Distance between atom C and D
+    (phi_A phi_B|phi_C phi_D)
+    :param a: exponent of Gaussian function which is centered at A
+    :param b: exponent of Gaussian function which is centered at B
+    :param c: exponent of Gaussian function which is centered at C
+    :param d: exponent of Gaussian function which is centered at D
+    :param Rab: Distance between A and B
+    :param Rcd: Distance between C and D
     :param Rpq: Distance between centre P and Q
     :return:
     """
@@ -87,7 +90,7 @@ def ERI_int(a, b, c, d, Rab, Rcd, Rpq):
     return eri
 
 
-def HFSCF(_r):
+def HFSCF(_r, molecular):
     """
     This function is used to perform HF-SCF
     :param _r: Distance between the atoms
@@ -108,98 +111,182 @@ def HFSCF(_r):
         Coeff_He[i] = Coeff[i] * ((2 * Expon_He[i] / pi) ** 0.75)
         Coeff_H[i] = Coeff[i] * ((2 * Expon_H[i] / pi) ** 0.75)
 
-    # For problem 1. (a)
-    # The integrals can be generated as followed
-    S = np.zeros([2, 2])
-    T = np.zeros([2, 2])
-    Va = np.zeros([2, 2])
-    Vb = np.zeros([2, 2])
-    Za = 2
-    Zb = 1
+    # For problem a-f, we need HeH+
+    if molecular == 'HeH+':
+        # For problem 1. (a)
+        # The integrals can be generated as followed
+        S = np.zeros([2, 2])
+        T = np.zeros([2, 2])
+        Va = np.zeros([2, 2])
+        Vb = np.zeros([2, 2])
+        Za = 2
+        Zb = 1
 
-    for i in range(3):
-        for j in range(3):
-            # Overlap matrix
-            S[0, 0] += S_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
-            S[0, 1] += S_int(Expon_He[i], Expon_H[j], _r) * Coeff_He[i] * Coeff_H[j]
-            S[1, 1] += S_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
-            S[1, 0] = S[0, 1]
+        for i in range(3):
+            for j in range(3):
+                # Overlap matrix
+                S[0, 0] += S_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
+                S[0, 1] += S_int(Expon_He[i], Expon_H[j], _r) * Coeff_He[i] * Coeff_H[j]
+                S[1, 1] += S_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
+                S[1, 0] = S[0, 1]
 
-            # Kinetic Matrix
-            T[0, 0] += T_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
-            T[0, 1] += T_int(Expon_He[i], Expon_H[j], _r) * Coeff_He[i] * Coeff_H[j]
-            T[1, 1] += T_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
-            T[1, 0] = T[0, 1]
+                # Kinetic Matrix
+                T[0, 0] += T_int(Expon_He[i], Expon_He[j], 0) * Coeff_He[i] * Coeff_He[j]
+                T[0, 1] += T_int(Expon_He[i], Expon_H[j], _r) * Coeff_He[i] * Coeff_H[j]
+                T[1, 1] += T_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
+                T[1, 0] = T[0, 1]
 
-            # Nuclear attraction integrals
-            Rap = Expon_H[j] * _r / (Expon_He[i] + Expon_H[j])
-            Rbp = _r - Rap
-            Va[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, 0, Za) * Coeff_He[i] * Coeff_He[j]
-            Va[0, 1] += V_int(Expon_He[i], Expon_H[j], _r, Rap, Za) * Coeff_He[i] * Coeff_H[j]
-            Va[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, _r, Za) * Coeff_H[i] * Coeff_H[j]
-            Va[1, 0] = Va[0, 1]
+                # Nuclear attraction integrals
+                Rap = Expon_H[j] * _r / (Expon_He[i] + Expon_H[j])
+                Rbp = _r - Rap
+                Va[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, 0, Za) * Coeff_He[i] * Coeff_He[j]
+                Va[0, 1] += V_int(Expon_He[i], Expon_H[j], _r, Rap, Za) * Coeff_He[i] * Coeff_H[j]
+                Va[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, _r, Za) * Coeff_H[i] * Coeff_H[j]
+                Va[1, 0] = Va[0, 1]
 
-            Vb[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, _r, Zb) * Coeff_He[i] * Coeff_He[j]
-            Vb[0, 1] += V_int(Expon_He[i], Expon_H[j], _r, Rbp, Zb) * Coeff_He[i] * Coeff_H[j]
-            Vb[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, 0, Zb) * Coeff_H[i] * Coeff_H[j]
-            Vb[1, 0] = Vb[0, 1]
+                Vb[0, 0] += V_int(Expon_He[i], Expon_He[j], 0, _r, Zb) * Coeff_He[i] * Coeff_He[j]
+                Vb[0, 1] += V_int(Expon_He[i], Expon_H[j], _r, Rbp, Zb) * Coeff_He[i] * Coeff_H[j]
+                Vb[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, 0, Zb) * Coeff_H[i] * Coeff_H[j]
+                Vb[1, 0] = Vb[0, 1]
 
-    H_core = T + Va + Vb
+        H_core = T + Va + Vb
 
-    # For problem (b)
-    # Calculate the two electron integrals
-    ERI = np.zeros([2, 2, 2, 2])
+        # For problem (b)
+        # Calculate the two electron integrals
+        ERI = np.zeros([2, 2, 2, 2])
 
-    for i in range(3):
-        for j in range(3):
-            for k in range(3):
-                for l in range(3):
-                    Rap = Expon_H[i] * _r / (Expon_H[i] + Expon_He[j])
-                    Raq = Expon_H[k] * _r / (Expon_H[k] + Expon_He[l])
-                    Rbq = _r - Raq
-                    Rpq = Rap - Raq
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    for l in range(3):
+                        Rap = Expon_H[i] * _r / (Expon_H[i] + Expon_He[j])
+                        Raq = Expon_H[k] * _r / (Expon_H[k] + Expon_He[l])
+                        Rbq = _r - Raq
+                        Rpq = Rap - Raq
 
-                    ERI[0, 0, 0, 0] += ERI_int(Expon_He[i], Expon_He[j], Expon_He[k], Expon_He[l], 0, 0, 0) * Coeff_He[i] *\
-                                       Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
+                        ERI[0, 0, 0, 0] += ERI_int(Expon_He[i], Expon_He[j], Expon_He[k], Expon_He[l], 0, 0, 0) * Coeff_He[i] *\
+                                           Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
 
-                    ERI[1, 0, 0, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_He[k], Expon_He[l], _r, 0, Rap) * Coeff_H[i] *\
-                    Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
+                        ERI[1, 0, 0, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_He[k], Expon_He[l], _r, 0, Rap) * Coeff_H[i] *\
+                        Coeff_He[j] * Coeff_He[k] * Coeff_He[l]
 
-                    ERI[1, 0, 1, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_H[k], Expon_He[l], _r, _r, Rpq) * Coeff_H[i] * \
-                    Coeff_He[j] * Coeff_H[k] * Coeff_He[l]
+                        ERI[1, 0, 1, 0] += ERI_int(Expon_H[i], Expon_He[j], Expon_H[k], Expon_He[l], _r, _r, Rpq) * Coeff_H[i] * \
+                        Coeff_He[j] * Coeff_H[k] * Coeff_He[l]
 
-                    ERI[1, 1, 0, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_He[k], Expon_He[l], 0, 0, _r) * Coeff_H[i] * \
-                    Coeff_H[j] * Coeff_He[k] * Coeff_He[l]
+                        ERI[1, 1, 0, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_He[k], Expon_He[l], 0, 0, _r) * Coeff_H[i] * \
+                        Coeff_H[j] * Coeff_He[k] * Coeff_He[l]
 
-                    ERI[1, 1, 1, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_He[l], 0, _r, Rbq) * Coeff_H[i] * \
-                    Coeff_H[j] * Coeff_H[k] * Coeff_He[l]
+                        ERI[1, 1, 1, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_He[l], 0, _r, Rbq) * Coeff_H[i] * \
+                        Coeff_H[j] * Coeff_H[k] * Coeff_He[l]
 
-                    ERI[1, 1, 1, 1] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], 0, 0, 0) * Coeff_H[i] * \
-                    Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
+                        ERI[1, 1, 1, 1] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], 0, 0, 0) * Coeff_H[i] * \
+                        Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
 
-                    ERI[0, 1, 0, 0] = ERI[1, 0, 0, 0]
-                    ERI[0, 0, 1, 0] = ERI[1, 0, 0, 0]
-                    ERI[0, 0, 0, 1] = ERI[1, 0, 0, 0]
+                        ERI[0, 1, 0, 0] = ERI[1, 0, 0, 0]
+                        ERI[0, 0, 1, 0] = ERI[1, 0, 0, 0]
+                        ERI[0, 0, 0, 1] = ERI[1, 0, 0, 0]
 
-                    ERI[1, 0, 0, 1] = ERI[1, 0, 1, 0]
-                    ERI[0, 1, 0, 1] = ERI[1, 0, 1, 0]
-                    ERI[0, 1, 1, 0] = ERI[1, 0, 1, 0]
+                        ERI[1, 0, 0, 1] = ERI[1, 0, 1, 0]
+                        ERI[0, 1, 0, 1] = ERI[1, 0, 1, 0]
+                        ERI[0, 1, 1, 0] = ERI[1, 0, 1, 0]
 
-                    ERI[0, 0, 1, 1] = ERI[1, 1, 0, 0]
+                        ERI[0, 0, 1, 1] = ERI[1, 1, 0, 0]
 
-                    ERI[0, 1, 1, 1] = ERI[1, 1, 1, 0]
-                    ERI[1, 0, 1, 1] = ERI[1, 1, 1, 0]
-                    ERI[1, 1, 0, 1] = ERI[1, 1, 1, 0]
+                        ERI[0, 1, 1, 1] = ERI[1, 1, 1, 0]
+                        ERI[1, 0, 1, 1] = ERI[1, 1, 1, 0]
+                        ERI[1, 1, 0, 1] = ERI[1, 1, 1, 0]
 
-    '''
-    print("For problem (b):")
-    print('(11|11): ', ERI[0, 0, 0, 0])
-    print('(21|11): ', ERI[1, 0, 0, 0])
-    print('(21|21): ', ERI[1, 0, 1, 0])
-    print('(22|11): ', ERI[1, 1, 0, 0])
-    print('(22|21): ', ERI[1, 1, 1, 0])
-    print('(22|22): ', ERI[1, 1, 1, 1])
-    '''
+        '''
+        print("For problem (b):")
+        print('(11|11): ', ERI[0, 0, 0, 0])
+        print('(21|11): ', ERI[1, 0, 0, 0])
+        print('(21|21): ', ERI[1, 0, 1, 0])
+        print('(22|11): ', ERI[1, 1, 0, 0])
+        print('(22|21): ', ERI[1, 1, 1, 0])
+        print('(22|22): ', ERI[1, 1, 1, 1])
+        '''
+
+    # For problem (e), we need to evaluate H2
+    elif molecular == 'H2':
+        # For problem 1. (a)
+        # The integrals can be generated as followed
+        S = np.zeros([2, 2])
+        T = np.zeros([2, 2])
+        Va = np.zeros([2, 2])
+        Vb = np.zeros([2, 2])
+        Za = 2
+        Zb = 1
+
+        for i in range(3):
+            for j in range(3):
+                # Overlap matrix
+                S[0, 0] += S_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
+                S[0, 1] += S_int(Expon_H[i], Expon_H[j], _r) * Coeff_H[i] * Coeff_H[j]
+                S[1, 1] = S[0, 0]
+                S[1, 0] = S[0, 1]
+
+                # Kinetic Matrix
+                T[0, 0] += T_int(Expon_H[i], Expon_H[j], 0) * Coeff_H[i] * Coeff_H[j]
+                T[0, 1] += T_int(Expon_H[i], Expon_H[j], _r) * Coeff_H[i] * Coeff_H[j]
+                T[1, 1] = T[0, 0]
+                T[1, 0] = T[0, 1]
+
+                # Nuclear attraction integrals
+                Rap = Expon_H[j] * _r / (Expon_H[i] + Expon_H[j])
+                Rbp = _r - Rap
+                Va[0, 0] += V_int(Expon_H[i], Expon_H[j], 0, 0, Zb) * Coeff_H[i] * Coeff_H[j]
+                Va[0, 1] += V_int(Expon_H[i], Expon_H[j], _r, Rap, Zb) * Coeff_H[i] * Coeff_H[j]
+                Va[1, 1] = Va[0, 0]
+                Va[1, 0] = Va[0, 1]
+
+                Vb = Va
+
+        H_core = T + Va + Vb
+
+        # For problem (b)
+        # Calculate the two electron integrals
+        ERI = np.zeros([2, 2, 2, 2])
+
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    for l in range(3):
+                        Rap = Expon_H[i] * _r / (Expon_H[i] + Expon_H[j])
+                        Raq = Expon_H[k] * _r / (Expon_H[k] + Expon_H[l])
+                        Rbq = _r - Raq
+                        Rpq = Rap - Raq
+
+                        ERI[0, 0, 0, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], 0, 0, 0) * Coeff_H[i] *\
+                                           Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
+
+                        ERI[1, 0, 0, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], _r, 0, Rap) * Coeff_H[i] *\
+                        Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
+
+                        ERI[1, 0, 1, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], _r, _r, Rpq) * Coeff_H[i] * \
+                        Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
+
+                        ERI[1, 1, 0, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], 0, 0, _r) * Coeff_H[i] * \
+                        Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
+
+                        ERI[1, 1, 1, 0] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], 0, _r, Rbq) * Coeff_H[i] * \
+                        Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
+
+                        ERI[1, 1, 1, 1] += ERI_int(Expon_H[i], Expon_H[j], Expon_H[k], Expon_H[l], 0, 0, 0) * Coeff_H[i] * \
+                        Coeff_H[j] * Coeff_H[k] * Coeff_H[l]
+
+                        ERI[0, 1, 0, 0] = ERI[1, 0, 0, 0]
+                        ERI[0, 0, 1, 0] = ERI[1, 0, 0, 0]
+                        ERI[0, 0, 0, 1] = ERI[1, 0, 0, 0]
+
+                        ERI[1, 0, 0, 1] = ERI[1, 0, 1, 0]
+                        ERI[0, 1, 0, 1] = ERI[1, 0, 1, 0]
+                        ERI[0, 1, 1, 0] = ERI[1, 0, 1, 0]
+
+                        ERI[0, 0, 1, 1] = ERI[1, 1, 0, 0]
+
+                        ERI[0, 1, 1, 1] = ERI[1, 1, 1, 0]
+                        ERI[1, 0, 1, 1] = ERI[1, 1, 1, 0]
+                        ERI[1, 1, 0, 1] = ERI[1, 1, 1, 0]
 
     # For problem (c)
     toler = 1e-14
@@ -228,10 +315,10 @@ def HFSCF(_r):
                     for l in range(2):
                         G[i, j] += P[k, l] * (ERI[i, j, k, l] - 0.5 * ERI[i, l, k, j])
 
-        # Construct the Fock matrix by adding H_core and G
+        # Construct the Fock matrix F = H_core + G
         F = H_core + G
 
-        # Calculate the electronic energy
+        # Calculate the electronic energy, E_ele = 0.5 * P (H_core + F)
         energy_ele = np.sum(0.5 * P * (H_core + F))
         # print('Electronic energy = ', energy_ele)
 
@@ -258,15 +345,17 @@ def HFSCF(_r):
         # Once converged
         if Delta < toler:
             # Add the nuclear repulsion energy
-            energy = energy_ele + Za * Zb / _r
+            _energy = energy_ele + Za * Zb / _r
+            '''
             print('\nConverged!!!')
             print("Calculation converged with electronic energy:", energy_ele)
             print("Calculation converged with total energy:", energy)
             print('MO Coefficients:\n', C)
             print('Orbital Energies:\n', np.diag(epsilon))
-
+            '''
             break
-    return energy, ERI, epsilon, H_core
+
+    return _energy, ERI, epsilon, H_core
 
 def CI_calculation(_eri, _epsilon, _h):
 
@@ -292,26 +381,28 @@ np.set_printoptions(precision=7, linewidth=200, threshold=2000, suppress=True)
 pi = np.pi
 exp = np.exp
 r = 1.4632
-energy, ERI, e, h = HFSCF(r)
+energy_HeH, ERI, e, h = HFSCF(r, 'HeH+')
 
-'''
 # For problem (d)
 # Perform HF-SCF from 0.5 to 5 a.u.
 
-distance = np.linspace(0.5, 5, 1000)
-energy_surface = np.zeros([1000])
+distance = np.linspace(0.5, 5, 5000)
+energy_surface_HeH = np.zeros([5000])
+energy_surface_H2 = np.zeros([5000])
 
 for index, R in enumerate(distance):
-    energy_surface[index], tmp = HFSCF(R)
+    energy_surface_HeH[index], tmp1, tmp2, tmp3 = HFSCF(R, 'HeH+')
+    energy_surface_H2[index], tmp1, tmp2, tmp3 = HFSCF(R, 'H2')
 
 # Plot the energy surface
-plt.plot(distance, energy_surface, '.-')
+fig = plt.plot(distance, energy_surface_HeH, '-', label='HeH+')
+fig = plt.plot(distance, energy_surface_H2, '-', label='H2')
 plt.ylabel('E (a.u.)')
 plt.xlabel('R (a.u.)')
+plt.legend(loc='best')
 plt.show()
 
-print('Equlibrium Bond Length:', distance[energy_surface.argmin()], '\nMinimum Energy:', energy_surface.min())
-'''
+print('Equlibrium Bond Length:', distance[energy_surface_HeH.argmin()], '\nMinimum Energy:', energy_surface_HeH.min())
 
 # For problem (f), perform the full CI calculation
 E_correct, CI_coeffient = CI_calculation(ERI, e, h)
