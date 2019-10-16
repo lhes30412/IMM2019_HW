@@ -231,6 +231,7 @@ def HFSCF(_r):
         # Construct the Fock matrix by adding H_core and G
         F = H_core + G
 
+        # Calculate the electronic energy
         energy_ele = np.sum(0.5 * P * (H_core + F))
         # print('Electronic energy = ', energy_ele)
 
