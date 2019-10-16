@@ -94,23 +94,17 @@ def HFSCF(_r):
     :return:
     """
 
-    Zeta1 = 2.0925
-    Zeta2 = 1.24
-
     # Construct the AO basis set
     # Standard STO-3G information for zeta = 1.0
     Coeff = np.array([0.444635, 0.535328, 0.154329])
-    Expon = np.array([0.109818, 0.405771, 2.227660])
+    Expon_He = np.array([0.480844, 1.77669, 9.75393])
+    Expon_H = np.array([0.168856, 0.623913, 3.42525])
 
-    Expon_He = np.zeros([3])
-    Expon_H = np.zeros([3])
     Coeff_He = np.zeros([3])
     Coeff_H = np.zeros([3])
 
 
     for i in range(3):
-        Expon_He[i] = Expon[i] * (Zeta1 ** 2)
-        Expon_H[i] = Expon[i] * (Zeta2 ** 2)
         Coeff_He[i] = Coeff[i] * ((2 * Expon_He[i] / pi) ** 0.75)
         Coeff_H[i] = Coeff[i] * ((2 * Expon_H[i] / pi) ** 0.75)
 
@@ -161,7 +155,6 @@ def HFSCF(_r):
             for k in range(3):
                 for l in range(3):
                     Rap = Expon_H[i] * _r / (Expon_H[i] + Expon_He[j])
-                    Rbp = _r - Rap
                     Raq = Expon_H[k] * _r / (Expon_H[k] + Expon_He[l])
                     Rbq = _r - Raq
                     Rpq = Rap - Raq
@@ -209,7 +202,7 @@ def HFSCF(_r):
     '''
 
     # For problem (c)
-    toler = 1e-11
+    toler = 1e-14
     MaxIter = 250
     Iter = 0
 
@@ -252,14 +245,11 @@ def HFSCF(_r):
 
         # Construct a new density matrix from the C by P = 2 C'C
         P_old = P.copy()
-        P = np.zeros([2, 2])
-
-        for i in range(2):
-            for j in range(2):
-                for k in range(1):
-                    P[i, j] += 2 * C[i, k] * C[j, k]
+        C_occ = C[:, :1]
+        P = 2 * np.dot(C_occ, C_occ.transpose())
 
         # Check whether the procedure is converged by check the density matrix
+        # Check the RMS of the density matrix
         Delta = P - P_old
         Delta = np.sqrt(np.sum(Delta ** 2) / 4)
         # print("Delta", Delta)
