@@ -345,7 +345,10 @@ def HFSCF(_r, molecular):
         # Once converged
         if Delta < toler:
             # Add the nuclear repulsion energy
-            _energy = energy_ele + Za * Zb / _r
+            if molecular == 'HeH+':
+                _energy = energy_ele + Za * Zb / _r
+            elif molecular == 'H2':
+                _energy = energy_ele + Zb**2 / _r
             '''
             print('\nConverged!!!')
             print("Calculation converged with electronic energy:", energy_ele)
@@ -386,9 +389,9 @@ energy_HeH, ERI, e, h = HFSCF(r, 'HeH+')
 # For problem (d)
 # Perform HF-SCF from 0.5 to 5 a.u.
 
-distance = np.linspace(0.5, 5, 5000)
-energy_surface_HeH = np.zeros([5000])
-energy_surface_H2 = np.zeros([5000])
+distance = np.linspace(0.5, 5, 1000)
+energy_surface_HeH = np.zeros([1000])
+energy_surface_H2 = np.zeros([1000])
 
 for index, R in enumerate(distance):
     energy_surface_HeH[index], tmp1, tmp2, tmp3 = HFSCF(R, 'HeH+')
