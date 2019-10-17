@@ -238,9 +238,10 @@ def HFSCF(_r, molecular):
                 Va[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, _r, Zb) * Coeff_H[i] * Coeff_H[j]
                 Va[1, 0] = Va[0, 1]
 
-                Vb = Va
-                Vb[0, 0] = Va[1, 1]
-                Vb[1, 1] = Va[0, 0]
+                Vb[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, 0, Zb) * Coeff_H[i] * Coeff_H[j]
+                Vb[0, 1] += V_int(Expon_H[i], Expon_H[j], _r, Rap, Zb) * Coeff_H[i] * Coeff_H[j]
+                Vb[0, 0] += V_int(Expon_H[i], Expon_H[j], 0, _r, Zb) * Coeff_H[i] * Coeff_H[j]
+                Vb[1, 0] = Va[0, 1]
 
         H_core = T + Va + Vb
 
@@ -386,21 +387,26 @@ pi = np.pi
 exp = np.exp
 r = 1.4632
 energy_HeH, ERI, e, h = HFSCF(r, 'HeH+')
-energy_H2, ERI, e, h = HFSCF(1.4, 'H2')
+
 # For problem (d)
 # Perform HF-SCF from 0.5 to 5 a.u.
-'''
-distance = np.linspace(0.5, 5, 500)
-energy_surface_HeH = np.zeros([500])
-energy_surface_H2 = np.zeros([500])
+
+distance = np.linspace(0.5, 5, 1000)
+energy_surface_HeH = np.zeros([1000])
+energy_surface_H2 = np.zeros([1000])
 
 for index, R in enumerate(distance):
     energy_surface_HeH[index], tmp1, tmp2, tmp3 = HFSCF(R, 'HeH+')
     energy_surface_H2[index], tmp1, tmp2, tmp3 = HFSCF(R, 'H2')
 
+# Calculate the energy at very far
+energy_HeH_far, tmp1, tmp2, tmp3 = HFSCF(10000, 'HeH+')
+print('Total Energy at Far: ', energy_HeH_far)
+
 # Plot the energy surface
-fig = plt.plot(distance, energy_surface_HeH, '-', label='HeH+')
-fig = plt.plot(distance, energy_surface_H2, '-', label='H2')
+# Only HeH+
+fig1 = plt.plot(distance, energy_surface_HeH, '-', label='HeH+')
+plt.title('Potential Energy Surface of HeH+', loc='center')
 plt.ylabel('E (a.u.)')
 plt.xlabel('R (a.u.)')
 plt.legend(loc='best')
@@ -408,9 +414,18 @@ plt.show()
 
 print('Equlibrium Bond Length:', distance[energy_surface_HeH.argmin()], '\nMinimum Energy:', energy_surface_HeH.min())
 
+# For problem (e), plot the potential energy surface with H2 and HeH+
+fig2 = plt.plot(distance, energy_surface_HeH, '-', label='HeH+')
+fig2 = plt.plot(distance, energy_surface_H2, '-', label='H2')
+plt.title('Potential Energy Surface of H2 and HeH+', loc='center')
+plt.ylabel('E (a.u.)')
+plt.xlabel('R (a.u.)')
+plt.legend(loc='best')
+plt.show()
+
 # For problem (f), perform the full CI calculation
 E_correct, CI_coeffient = CI_calculation(ERI, e, h)
 print('Correction Energy:\n', E_correct)
 print('CI Coefficients:\n', CI_coeffient)
-'''
+
 print('Program works successfully!! Go buy some beer!!')
