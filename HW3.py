@@ -214,7 +214,6 @@ def HFSCF(_r, molecular):
         T = np.zeros([2, 2])
         Va = np.zeros([2, 2])
         Vb = np.zeros([2, 2])
-        Za = 2
         Zb = 1
 
         for i in range(3):
@@ -236,10 +235,12 @@ def HFSCF(_r, molecular):
                 Rbp = _r - Rap
                 Va[0, 0] += V_int(Expon_H[i], Expon_H[j], 0, 0, Zb) * Coeff_H[i] * Coeff_H[j]
                 Va[0, 1] += V_int(Expon_H[i], Expon_H[j], _r, Rap, Zb) * Coeff_H[i] * Coeff_H[j]
-                Va[1, 1] = Va[0, 0]
+                Va[1, 1] += V_int(Expon_H[i], Expon_H[j], 0, _r, Zb) * Coeff_H[i] * Coeff_H[j]
                 Va[1, 0] = Va[0, 1]
 
                 Vb = Va
+                Vb[0, 0] = Va[1, 1]
+                Vb[1, 1] = Va[0, 0]
 
         H_core = T + Va + Vb
 
@@ -290,7 +291,7 @@ def HFSCF(_r, molecular):
 
     # For problem (c)
     toler = 1e-14
-    MaxIter = 250
+    MaxIter = 2000
     Iter = 0
 
     # Initial guess density matrix
@@ -348,7 +349,7 @@ def HFSCF(_r, molecular):
             if molecular == 'HeH+':
                 _energy = energy_ele + Za * Zb / _r
             elif molecular == 'H2':
-                _energy = energy_ele + Zb**2 / _r
+                _energy = energy_ele + Zb / _r
             '''
             print('\nConverged!!!')
             print("Calculation converged with electronic energy:", energy_ele)
@@ -385,13 +386,13 @@ pi = np.pi
 exp = np.exp
 r = 1.4632
 energy_HeH, ERI, e, h = HFSCF(r, 'HeH+')
-
+energy_H2, ERI, e, h = HFSCF(1.4, 'H2')
 # For problem (d)
 # Perform HF-SCF from 0.5 to 5 a.u.
-
-distance = np.linspace(0.5, 5, 1000)
-energy_surface_HeH = np.zeros([1000])
-energy_surface_H2 = np.zeros([1000])
+'''
+distance = np.linspace(0.5, 5, 500)
+energy_surface_HeH = np.zeros([500])
+energy_surface_H2 = np.zeros([500])
 
 for index, R in enumerate(distance):
     energy_surface_HeH[index], tmp1, tmp2, tmp3 = HFSCF(R, 'HeH+')
@@ -411,4 +412,5 @@ print('Equlibrium Bond Length:', distance[energy_surface_HeH.argmin()], '\nMinim
 E_correct, CI_coeffient = CI_calculation(ERI, e, h)
 print('Correction Energy:\n', E_correct)
 print('CI Coefficients:\n', CI_coeffient)
+'''
 print('Program works successfully!! Go buy some beer!!')
