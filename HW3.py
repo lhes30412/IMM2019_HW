@@ -370,6 +370,7 @@ def CI_calculation(_eri, _epsilon, _h, _c):
     _eri_mo = np.zeros([2, 2, 2, 2])
     _h_mo = np.zeros([2, 2])
 
+    # AO to MO basis transformation for eri
     for i in range(2):
         for j in range(2):
             for k in range(2):
@@ -380,6 +381,7 @@ def CI_calculation(_eri, _epsilon, _h, _c):
                                 for p in range(2):
                                     _eri_mo[i, j, k, l] += _c[m, i] * _c[n, j] * _c[o, k] * _c[p, l] * _eri[m, n, o, p]
 
+    # AO to MO basis transformation for h
     for i in range(2):
         for j in range(2):
             for k in range(2):
