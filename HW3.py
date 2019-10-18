@@ -360,18 +360,37 @@ def HFSCF(_r, molecular):
             '''
             break
 
-    return _energy, ERI, epsilon, H_core
+    return _energy, ERI, epsilon, H_core, C
 
-def CI_calculation(_eri, _epsilon, _h):
+def CI_calculation(_eri, _epsilon, _h, _c):
 
     # First construct the 3X3 CI matrix, in order ground state, single excitation, double excitation
     CI_matrix = np.zeros([3, 3])
 
+    _eri_mo = np.zeros([2, 2, 2, 2])
+    _h_mo = np.zeros([2, 2])
+
+    for i in range(2):
+        for j in range(2):
+            for k in range(2):
+                for l in range(2):
+                    for m in range(2):
+                        for n in range(2):
+                            for o in range(2):
+                                for p in range(2):
+                                    _eri_mo[i, j, k, l] += _c[m, i] * _c[n, j] * _c[o, k] * _c[p, l] * _eri[m, n, o, p]
+
+    for i in range(2):
+        for j in range(2):
+            for k in range(2):
+                for l in range(2):
+                    _h_mo[i, j] += _c[k, i] * _c[l, j] * _h[k, l]
+
     #
     CI_matrix[0, 2] = _eri[0, 1, 1, 0]
-    CI_matrix[1, 1] = _epsilon[1] - _epsilon[0] - _eri[1, 1, 0, 0] + 2 * _eri[1, 0, 0, 1]
-    CI_matrix[1, 2] = pow(2, -0.5) * (2 * _h[0, 1] + 2 * _eri[0, 1, 1, 1] + 2 * _eri[0, 0, 1, 0] - 2 * _eri[0, 1, 1, 1])
-    CI_matrix[2, 2] = 2 * (_epsilon[1] - _epsilon[0]) + _eri[0, 0, 0, 0] + _eri[1, 1, 1, 1] - 4 * _eri[0, 0, 1, 1]\
+    CI_matrix[1, 1] = _epsilon[1] - _epsilon[0] - _eri_mo[1, 1, 0, 0] + 2 * _eri_mo[1, 0, 0, 1]
+    CI_matrix[1, 2] = pow(2, -0.5) * (2 * _h_mo[0, 1] + 2 * _eri_mo[0, 1, 1, 1])
+    CI_matrix[2, 2] = 2 * (_epsilon[1] - _epsilon[0]) + _eri_mo[0, 0, 0, 0] + _eri[1, 1, 1, 1] - 4 * _eri[0, 0, 1, 1]\
                       + 2 * _eri[0, 1, 1, 0]
 
     CI_matrix += CI_matrix.transpose() - np.diag(CI_matrix.diagonal())
@@ -386,21 +405,21 @@ np.set_printoptions(precision=7, linewidth=200, threshold=2000, suppress=True)
 pi = np.pi
 exp = np.exp
 r = 1.4632
-energy_HeH, ERI, e, h = HFSCF(r, 'HeH+')
+energy_HeH, ERI, e, h, c = HFSCF(r, 'HeH+')
 
 # For problem (d)
 # Perform HF-SCF from 0.5 to 5 a.u.
 
-distance = np.linspace(0.5, 5, 1000)
-energy_surface_HeH = np.zeros([1000])
-energy_surface_H2 = np.zeros([1000])
+distance = np.linspace(0.5, 5, 50)
+energy_surface_HeH = np.zeros([50])
+energy_surface_H2 = np.zeros([50])
 
 for index, R in enumerate(distance):
-    energy_surface_HeH[index], tmp1, tmp2, tmp3 = HFSCF(R, 'HeH+')
-    energy_surface_H2[index], tmp1, tmp2, tmp3 = HFSCF(R, 'H2')
+    energy_surface_HeH[index], tmp1, tmp2, tmp3, tmp4 = HFSCF(R, 'HeH+')
+    energy_surface_H2[index], tmp1, tmp2, tmp3, tmp4 = HFSCF(R, 'H2')
 
 # Calculate the energy at very far
-energy_HeH_far, tmp1, tmp2, tmp3 = HFSCF(10000, 'HeH+')
+energy_HeH_far, tmp1, tmp2, tmp3, tmp4 = HFSCF(10000, 'HeH+')
 
 # Plot the energy surface
 # Only HeH+
@@ -425,7 +444,7 @@ plt.legend(loc='best')
 plt.show()
 
 # For problem (f), perform the full CI calculation
-E_correct, CI_coeffient = CI_calculation(ERI, e, h)
+E_correct, CI_coeffient = CI_calculation(ERI, e, h, c)
 print('Correction Energy:\n', E_correct)
 print('CI Coefficients:\n', CI_coeffient)
 
