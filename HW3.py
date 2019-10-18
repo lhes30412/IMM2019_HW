@@ -388,7 +388,7 @@ def CI_calculation(_eri, _epsilon, _h, _c):
                 for l in range(2):
                     _h_mo[i, j] += _c[k, i] * _c[l, j] * _h[k, l]
 
-    #
+    # Constrict the CI matrix
     CI_matrix[0, 2] = _eri[0, 1, 1, 0]
     CI_matrix[1, 1] = _epsilon[1] - _epsilon[0] - _eri_mo[1, 1, 0, 0] + 2 * _eri_mo[1, 0, 0, 1]
     CI_matrix[1, 2] = pow(2, -0.5) * (2 * _h_mo[0, 1] + 2 * _eri_mo[0, 1, 1, 1])
