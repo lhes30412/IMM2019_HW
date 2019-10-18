@@ -396,7 +396,7 @@ def CI_calculation(_eri, _epsilon, _h, _c):
                       + 2 * _eri[0, 1, 1, 0]
 
     CI_matrix += CI_matrix.transpose() - np.diag(CI_matrix.diagonal())
-
+    print('CI_matrix:\n', CI_matrix)
     energy_correct, CI_coefficient = np.linalg.eigh(CI_matrix)
 
     return energy_correct, CI_coefficient
@@ -448,6 +448,7 @@ plt.show()
 # For problem (f), perform the full CI calculation
 E_correct, CI_coeffient = CI_calculation(ERI, e, h, c)
 print('Correction Energy:\n', E_correct)
+print('Total energy after correction:\n', energy_HeH + E_correct[0])
 print('CI Coefficients:\n', CI_coeffient)
 
 print('Program works successfully!! Go buy some beer!!')
