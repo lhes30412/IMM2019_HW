@@ -401,7 +401,6 @@ for index, R in enumerate(distance):
 
 # Calculate the energy at very far
 energy_HeH_far, tmp1, tmp2, tmp3 = HFSCF(10000, 'HeH+')
-print('Total Energy at Far: ', energy_HeH_far)
 
 # Plot the energy surface
 # Only HeH+
@@ -412,7 +411,9 @@ plt.xlabel('R (a.u.)')
 plt.legend(loc='best')
 plt.show()
 
-print('Equlibrium Bond Length:', distance[energy_surface_HeH.argmin()], '\nMinimum Energy:', energy_surface_HeH.min())
+print('Equlibrium Bond Length of HeH+:', distance[energy_surface_HeH.argmin()], '\nMinimum Energy:', energy_surface_HeH.min())
+print('Equlibrium Bond Length of H2:', distance[energy_surface_H2.argmin()], '\nMinimum Energy:', energy_surface_H2.min())
+print('Estimated Bond Dissociation Energy at Far: ', energy_HeH_far - energy_surface_HeH.min())
 
 # For problem (e), plot the potential energy surface with H2 and HeH+
 fig2 = plt.plot(distance, energy_surface_HeH, '-', label='HeH+')
